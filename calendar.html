@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>多功能日历</title>
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="stylesheet" href="calendar.css">
+</head>
+<body>
+<div class="bg-layer" aria-hidden="true"><div class="bg-image" id="bgImage"></div></div>
+
+<div class="save-warning" id="saveWarning" role="alert">
+  <span class="save-warning-text">保存失败：浏览器本地存储空间不足，刚才的修改可能没有写入。请到「设置 → 数据占用」清理（例如删除已导入的图片），或把背景图放进 image 文件夹。</span>
+  <button class="save-warning-close" id="saveWarningClose" type="button" title="关闭">&#10005;</button>
+</div>
+
+<div class="app">
+  <aside class="left-panel">
+    <div class="cal-switch" id="calSwitch">
+      <button class="cal-switch-btn" id="calSwitchBtn" title="切换 / 管理日历">
+        <span class="cal-switch-name" id="calSwitchName">日历一</span>
+        <span class="cal-switch-caret">&#9662;</span>
+      </button>
+      <div class="cal-menu" id="calMenu"></div>
+    </div>
+    <div class="current-label" id="currentLabel">当前月份：</div>
+    <div class="year-capsule" id="yearCapsule" title="悬停并滚动滚轮切换年份">
+      <span class="year-roller"><span class="year-text" id="yearText">2026年</span></span>
+      <button class="go-btn" id="yearGo">前往</button>
+    </div>
+    <div class="month-capsule" id="monthCapsule" title="点击或滚动选择月份"></div>
+    <button class="today-btn" id="todayBtn" title="回到今天">今</button>
+  </aside>
+
+  <main class="calendar-wrapper">
+    <div class="calendar" id="calendar">
+      <div class="cal-header">
+        <button class="nav-btn" id="prevBtn" title="上个月">&#8249;</button>
+        <div class="cal-title" id="calTitle"></div>
+        <div class="cal-right">
+          <div class="mark-blocks" id="markBlocks"></div>
+          <button class="clear-btn" id="clearBtn" title="消除（快捷键 Z）：清除选中日期 / 框选时间段的标记，或删除左键选中的时间段标记">消除</button>
+          <button class="mark-btn" id="markBtn" title="标记选中日期/时间段（快捷键：空格）">标记</button>
+          <button class="nav-btn" id="nextBtn" title="下个月">&#8250;</button>
+        </div>
+      </div>
+      <div class="weekdays" id="weekdays"></div>
+      <div class="month-grid" id="monthGrid"></div>
+    </div>
+  </main>
+
+  <div class="right-col">
+    <aside class="right-panel">
+      <div class="marker-title">标记色</div>
+      <div class="marker-list" id="markerList"></div>
+      <button class="add-btn" id="addBtn" title="添加标记色">+</button>
+    </aside>
+
+    <aside class="step-panel" id="stepPanel">
+      <div class="step-title">Shift 框选跨度</div>
+      <div class="step-options" id="stepOptions"></div>
+      <div class="step-custom">
+        <span>自定义</span>
+        <input id="stepCustom" type="number" min="1" placeholder="分钟">
+      </div>
+    </aside>
+  </div>
+</div>
+
+<div class="date-jump" id="dateJump">
+  <span>跳转日期：</span>
+  <input id="jYear" type="number" placeholder="年份" min="1" max="9999">
+  <span>年</span>
+  <input id="jMonth" type="number" placeholder="月份" min="1" max="12">
+  <span>月</span>
+  <input id="jDay" type="number" placeholder="日期" min="1" max="31">
+  <span>日</span>
+  <button class="go-btn" id="jumpGo">前往</button>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h3 id="modalTitle">添加标记色</h3>
+    <div class="field-label">选择颜色</div>
+    <div class="preset-colors" id="presetColors"></div>
+    <div class="color-row">
+      <input type="color" id="customColor" class="custom-color" value="#3b82f6">
+      <div class="color-preview" id="colorPreview" style="background:#3b82f6"></div>
+      <span style="font-size:12px;color:#6b7280">自定义颜色</span>
+    </div>
+    <div class="field-label">标记含义</div>
+    <input type="text" id="markerMeaning" placeholder="例如：运动 / 学习 / 重要" maxlength="20">
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="modalCancel">取消</button>
+      <button class="btn btn-primary" id="modalConfirm">添加</button>
+    </div>
+  </div>
+</div>
+
+<div class="time-tooltip" id="timeTooltip"></div>
+<div class="press-progress" id="pressProgress"></div>
+
+<button class="settings-btn" id="settingsBtn">&#9881;</button>
+<div class="settings-tip" id="settingsTip">设置</div>
+
+<div class="modal-overlay" id="settingsOverlay">
+  <div class="modal settings-modal big-modal">
+    <div class="settings-head">
+      <h3>设置</h3>
+      <button class="modal-x" id="settingsX" type="button" title="关闭">&#10005;</button>
+    </div>
+    <div class="settings-main">
+      <nav class="settings-nav" id="settingsNav">
+        <button class="settings-nav-item active" type="button" data-target="sec-calendar">日历设置</button>
+        <button class="settings-nav-item" type="button" data-target="sec-storage">占用</button>
+        <button class="settings-nav-item" type="button" data-target="sec-custom">自定义</button>
+        <button class="settings-nav-item" type="button" data-target="sec-appearance">外观</button>
+        <button class="settings-nav-item" type="button" data-target="sec-about">指南与声明</button>
+      </nav>
+      <div class="settings-body" id="settingsBody">
+      <section class="settings-group" id="sec-calendar">
+      <div class="settings-section">
+        <div class="settings-section-title">日历管理</div>
+        <div class="settings-hint">每个日历拥有独立的标记色、标记内容与数值，可用于记录不同类别的事情。</div>
+        <div class="cal-manage-list" id="calManageList"></div>
+        <div class="settings-add-row">
+          <input type="text" id="calNewName" placeholder="新日历名称（留空自动命名）" maxlength="20">
+          <button class="btn btn-ghost" id="calAddBtn">新建日历</button>
+        </div>
+      </div>
+      </section>
+      <section class="settings-group" id="sec-storage">
+      <div class="settings-divider"></div>
+      <div class="settings-section">
+        <div class="settings-section-title">数据占用</div>
+        <div class="settings-hint">所有日历与标记都保存在浏览器本地。删除标记色、标记或整个日历后，占用会真正变小；占得最多的是「导入的图片」，放进 image 文件夹的图片不占浏览器空间。</div>
+        <div class="storage-rows" id="storageRows"></div>
+        <div class="settings-add-row storage-actions">
+          <button class="btn btn-ghost" id="clearCalendarMarks" type="button">清空当前日历的标记</button>
+          <button class="btn btn-ghost" id="clearAllData" type="button">清空全部数据</button>
+          <button class="btn btn-ghost" id="storageRefresh" type="button">刷新</button>
+        </div>
+      </div>
+      </section>
+      <section class="settings-group" id="sec-custom">
+      <div class="settings-divider"></div>
+      <div class="settings-section">
+        <div class="settings-section-title">展开方式</div>
+        <div class="expand-mode-toggle">
+          <button class="mode-btn active" data-mode="page">整页展开</button>
+          <button class="mode-btn" data-mode="long">长页面展开</button>
+        </div>
+      </div>
+      <div class="settings-divider"></div>
+      <div class="settings-section">
+        <div class="settings-section-title">Shift 框选跨度</div>
+        <div class="step-presets" id="settingsStepPresets"></div>
+        <div class="settings-add-row">
+          <input type="number" id="settingsStepAddInput" placeholder="自定义分钟" min="1">
+          <button class="btn btn-ghost" id="settingsStepAddBtn">添加</button>
+        </div>
+      </div>
+      <div class="settings-divider"></div>
+      <div class="settings-section">
+        <div class="settings-section-title">按钮选项预设（内容）</div>
+        <div class="option-presets" id="settingsOptionPresets"></div>
+        <div class="settings-add-row">
+          <select id="settingsOptionCount">
+            <option value="2">2 个</option>
+            <option value="3">3 个</option>
+            <option value="4">4 个</option>
+            <option value="5">5 个</option>
+            <option value="6">6 个</option>
+            <option value="7">7 个</option>
+          </select>
+          <input type="text" id="settingsOptionLabels" placeholder="用/分隔，如 优/良/差">
+          <button class="btn btn-ghost" id="settingsOptionAddBtn">添加</button>
+        </div>
+      </div>
+      </section>
+      <section class="settings-group" id="sec-appearance">
+      <div class="settings-divider"></div>
+      <div class="settings-section">
+        <div class="settings-section-title">液态玻璃效果</div>
+        <div class="settings-hint">开启后，日历、标记色、Shift 框选跨度、设置窗口等模块会变成半透明的「液态玻璃」质感（毛玻璃 + 高光边缘 + 柔和阴影）。此时「透明度 / 模糊度 / 模块不透明度」会锁定不变。</div>
+        <label class="switch-row" for="glassToggle">
+          <span class="switch-text">液态玻璃效果</span>
+          <span class="switch">
+            <input type="checkbox" id="glassToggle">
+            <span class="switch-slider"></span>
+          </span>
+        </label>
+        <div class="settings-lock-hint" id="glassLockHint" style="display:none;">液态玻璃模式下，下方三个滑块已锁定（关闭液态玻璃后可继续调节）。默认白色背景下液态玻璃效果不明显，推荐与自定义图片背景配合使用。</div>
+      </div>
+      <div class="settings-divider"></div>
+      <div class="settings-section">
+        <div class="settings-section-title">背景图片</div>
+        <div class="settings-hint">把图片放进项目目录下的 <b>image</b> 文件夹即可使用（可点「扫描 image 文件夹」或「刷新图片列表」识别），也可以直接点「导入图片」选择本地文件。整页展开与长页面展开<b>共用同一张背景</b>；「模块不透明度」控制日历、标记色、Shift 框选跨度等所有模块的遮挡程度，调低它背景就透出来更多。</div>
+        <div class="bg-grid" id="bgGrid"></div>
+        <div class="settings-add-row bg-actions">
+          <button class="btn btn-ghost" id="bgImportBtn" type="button">导入图片</button>
+          <button class="btn btn-ghost" id="bgScanBtn" type="button">扫描 image 文件夹</button>
+          <button class="btn btn-ghost" id="bgRefreshBtn" type="button">刷新图片列表</button>
+          <button class="btn btn-ghost" id="bgCleanMissing" type="button" style="display:none;">移除失效图片</button>
+        </div>
+        <div class="bg-tip">每张图片右上角的 <b>&#10005;</b> 可以把它从列表中移除（不会删除 image 文件夹里的文件）；如果图片显示「文件不存在」，说明文件已被移走或改名，点 <b>&#10005;</b> 或「移除失效图片」即可清掉。</div>
+        <div class="bg-slider-row">
+          <span class="bg-slider-label">透明度</span>
+          <input type="range" id="bgOpacity" min="0" max="100" step="1" value="100">
+          <input type="number" id="bgOpacityNum" min="0" max="100" step="1" value="100">
+          <span class="bg-unit">%</span>
+        </div>
+        <div class="bg-slider-row">
+          <span class="bg-slider-label">模糊度</span>
+          <input type="range" id="bgBlur" min="0" max="100" step="1" value="0">
+          <input type="number" id="bgBlurNum" min="0" max="100" step="1" value="0">
+          <span class="bg-unit">px</span>
+        </div>
+        <div class="bg-slider-row">
+          <span class="bg-slider-label">模块不透明度</span>
+          <input type="range" id="bgPanel" min="0" max="100" step="1" value="86">
+          <input type="number" id="bgPanelNum" min="0" max="100" step="1" value="86">
+          <span class="bg-unit">%</span>
+        </div>
+        <input type="file" id="bgFileInput" accept="image/*" multiple hidden>
+        <input type="file" id="bgDirInput" webkitdirectory directory multiple hidden>
+      </div>
+      </section>
+      <section class="settings-group" id="sec-about">
+      <div class="settings-divider"></div>
+      <div class="settings-section">
+        <div class="guide-head">
+          <div class="settings-section-title">用户使用指南</div>
+          <button class="guide-toggle" id="guideToggle" type="button" aria-expanded="false" aria-controls="guideBody">
+            <span class="guide-toggle-text">展开</span>
+            <span class="guide-caret">&#9662;</span>
+          </button>
+        </div>
+        <div class="guide-body" id="guideBody" hidden>
+
+          <div class="guide-sec">
+            <div class="guide-h">一、基本导航</div>
+            <ul class="guide-list">
+              <li><b>&#8249; / &#8250;</b>：切换到上一个月 / 下一个月（带动画）。</li>
+              <li><b>左侧月份胶囊</b>：点击某个月份直接跳转；鼠标悬停其上滚动滚轮也能切换月份。</li>
+              <li><b>左侧年份胶囊</b>：悬停后滚动滚轮调整年份，再点「前往」跳转。</li>
+              <li><b>「今」</b>：回到今天所在的月份，并自动选中今天。</li>
+              <li><b>右下角「跳转日期」</b>：填写年 / 月 / 日，三项填齐后出现「前往」按钮，点击即可跳转（会自动校验该日期是否真实存在）。</li>
+              <li>非本月的日期以浅灰显示，同样可以点击与标记。</li>
+            </ul>
+          </div>
+
+          <div class="guide-sec">
+            <div class="guide-h">二、标记色（右侧面板）</div>
+            <ul class="guide-list">
+              <li><b>单击</b>：选中 / 取消选中该颜色。只有选中了颜色，「标记」按钮才会出现。</li>
+              <li><b>双击</b>：编辑该颜色（可改颜色与含义文字）。</li>
+              <li><b>拖动</b>：按住条目拖动可调整颜色顺序（松手前会用横线提示插入位置）。</li>
+              <li><b>&#10005;</b>（悬停时出现）：删除该颜色，所有日期上使用它的标记会一并移除。</li>
+              <li><b>＋</b>（面板右下角）：新建标记色，可选预设色块或自定义取色，并填写含义（回车即可确认）。</li>
+            </ul>
+          </div>
+
+          <div class="guide-sec">
+            <div class="guide-h">三、标记日期</div>
+            <ul class="guide-list">
+              <li><b>单击日期</b>：选中这一天。</li>
+              <li><b>Shift + 单击</b>：追加选中，可多选。</li>
+              <li><b>按住左键拖过多天</b>：连续框选一段日期；<b>Shift + 拖动</b>为追加框选。</li>
+              <li>展开某一周后，点击时间轴顶部的<b>日期头</b>同样可以选中 / 追加选中。</li>
+              <li>点<b>「标记」</b>（或按 <kbd>空格</kbd>）：把当前选中的颜色标记到所有已选日期上。</li>
+              <li>点<b>「消除」</b>（或按 <kbd>Z</kbd>）：清除已选日期的全部标记。</li>
+              <li>日期下方的<b>色条</b>表示该日期已有的标记颜色（一行最多显示 3 个）。</li>
+              <li>标题栏右侧的<b>标记色块</b>列出已选日期上已有的标记，点色块上的 <b>&#10005;</b> 可把这些日期上的该标记一次性移除。</li>
+            </ul>
+          </div>
+
+          <div class="guide-sec">
+            <div class="guide-h">四、时间段标记（展开周时间轴）</div>
+            <ul class="guide-list">
+              <li>周行两端的 <b>&#9650; / &#9660;</b>：把这一周展开成 24 小时时间轴（相邻周仍显示），再点一次收起。</li>
+              <li>按 <kbd>Tab</kbd>：<b>展开 / 收起</b>「当前选中日期所在的一周」（没有选中日期时以今天为准），并自动跳到对应月份；这一周已经展开时，再按一次即收起。</li>
+              <li>在时间轴上<b>按住左键上下拖动</b>：框选一段时间，蓝色高亮即为待标记区域。</li>
+              <li><b>Shift + 拖动</b>：按设置里的「框选跨度」对齐（默认 30 分钟一档）。</li>
+              <li>跟随鼠标的<b>提示框</b>会实时显示星期与具体时间。</li>
+              <li>点<b>「标记」</b>（或 <kbd>空格</kbd>）：把框选的时间段标记为当前颜色。</li>
+              <li>点<b>「消除」</b>（或 <kbd>Z</kbd>）：清除与该时间段重叠的所有时间段标记。</li>
+              <li><kbd>Esc</kbd>：取消当前正在框选的时间段。</li>
+              <li>今天所在的那一列会显示一条<b>当前时间线</b>；日期格左上角的<b>橙色三角</b>表示该日期有时间段标记。</li>
+            </ul>
+            <div class="guide-h2">时间段标记的编辑</div>
+            <ul class="guide-list">
+              <li><b>单击</b>：选中该标记，上下会出现两个可拖动的手柄；此时点<b>「消除」</b>或按 <kbd>Z</kbd> 可以<b>直接删除这个标记</b>。</li>
+              <li><b>长按约 1 秒</b>（出现进度圆环）<b>后拖动</b>：移动该标记 —— 上下拖动改时间，左右拖动可换到别的日期；按住 Shift 移动会按跨度对齐。</li>
+              <li><b>Ctrl + 左键拖动</b>：忽略鼠标下的时间段标记，直接压着它<b>框选新的时间段</b>——不会误选中、也不会误移动该标记。适合在已有标记的位置上补选或叠加标记（Mac 上可用 <kbd>&#8984;</kbd> 代替 Ctrl）。</li>
+              <li><b>拖动上 / 下手柄</b>：调整开始时间 / 结束时间；按住 Shift 同样按跨度对齐。</li>
+              <li><b>右键</b>：打开该时间段的「标记数值」面板。</li>
+            </ul>
+          </div>
+
+          <div class="guide-sec">
+            <div class="guide-h">五、标记数值（浮窗）</div>
+            <ul class="guide-list">
+              <li><b>打开方式</b>：右键点击「已有标记的日期格」或展开周顶部的日期头，或右键点击时间段标记。</li>
+              <li>同一天有多个标记时，面板顶部的<b>小圆点</b>可切换要编辑的标记，各自的数值分别保存。</li>
+              <li><b>「＋ 添加数值」</b>可选两种类型：
+                <br>&#183; <b>百分制（进度条）</b>：0~100 的滑块，也可以直接输入数字；
+                <br>&#183; <b>二 ~ 七选项</b>：一排按钮单选，标签组可在设置里自定义（如 优 / 良 / 差）。</li>
+              <li>每个数值都能<b>改名</b>、都能用 <b>&#10005;</b> 删除。</li>
+              <li>拖动面板顶部的<b>标题栏</b>可以移动浮窗位置。</li>
+              <li><b>「保存」</b>写入数据；<b>「取消」</b>或直接点击面板外部则放弃本次修改。</li>
+            </ul>
+          </div>
+
+          <div class="guide-sec">
+            <div class="guide-h">六、日历管理（多日历）</div>
+            <ul class="guide-list">
+              <li><b>左上角的日历胶囊</b>：点击展开列表，可直接切换日历，或选「管理日历…」打开设置。</li>
+              <li><b>设置 &#8594; 日历管理</b>：输入名称后点「新建日历」（名称留空会自动命名为 日历一、日历二……）；点击某一行即可切换；点 <b>&#9998;</b> 重命名（回车确认、Esc 取消）；点 <b>&#10005;</b> 删除。</li>
+              <li>每个日历拥有<b>各自独立</b>的标记色、日期标记、时间段标记与数值，互不影响，适合用不同日历记录不同类别的事情。</li>
+              <li>新建的日历是<b>空白</b>的，没有任何标记。</li>
+              <li>为避免数据无处存放，<b>至少会保留一个日历</b>，删除前会二次确认（删除后无法恢复）。</li>
+            </ul>
+          </div>
+
+          <div class="guide-sec">
+            <div class="guide-h">七、设置项说明</div>
+            <ul class="guide-list">
+              <li><b>展开方式</b>：「整页展开」的时间轴高度固定；「长页面展开」的时间轴更高，时间段更好点选。</li>
+              <li><b>Shift 框选跨度</b>：预设的分钟档位，点击即选用，<b>&#10005;</b> 删除；也可在下方输入自定义分钟数后点「添加」。展开周后，右侧的跨度面板与设置里的是同一份数据。</li>
+              <li><b>按钮选项预设（内容）</b>：为 2~7 选项添加标签组（用 / 分隔，数量必须与选项数一致，例如 优/良/差）；这些标签组会出现在「标记数值」面板的下拉列表中。</li>
+              <li><b>日历管理</b>：新建、切换、重命名、删除日历。</li>
+              <li><b>液态玻璃效果</b>（设置 &#8594; 外观）：开启后日历、标记色、Shift 框选跨度、设置窗口等模块会变成半透明的毛玻璃质感（带高光边缘与柔和阴影）；此时背景的「透明度 / 模糊度 / 模块不透明度」三个滑块会锁定并变灰，关闭开关后即可继续调节。开关状态会被记住。</li>
+              <li><b>背景图片</b>：图片放进项目下的 <b>image</b> 文件夹即可选用（点「扫描 image 文件夹」可直接选择该文件夹，点「刷新图片列表」重新检测）；也可以点「导入图片」直接选择本地文件（导入的图片保存在浏览器本地）。<b>整页展开与长页面展开共用同一张背景</b>：<b>透明度</b>（0~100%）与<b>模糊度</b>（0~100px）调整背景本身；<b>模块不透明度</b>（0~100%）统一控制日历、标记色、Shift 框选跨度等所有模块的遮挡程度 —— 数值越低，模块越透明、背景透出来越多（100% 时模块完全不透明）。选「无背景」即可恢复纯色背景。</li>
+            </ul>
+          </div>
+
+          <div class="guide-sec">
+            <div class="guide-h">八、快捷键速查</div>
+            <table class="guide-table">
+              <tr><th>按键</th><th>功能</th></tr>
+              <tr><td><kbd>空格</kbd></td><td>标记：把当前选中的颜色标记到已选日期 / 正在框选的时间段</td></tr>
+              <tr><td><kbd>Z</kbd></td><td>消除：删除左键选中的时间段标记，或清除已选日期的标记、与框选时间段重叠的标记</td></tr>
+              <tr><td><kbd>Tab</kbd></td><td>展开 / 收起「当前选中日期所在的一周」，并自动跳到对应月份</td></tr>
+              <tr><td><kbd>Esc</kbd></td><td>取消当前正在框选的时间段</td></tr>
+              <tr><td><kbd>Shift</kbd> + 单击 / 拖动</td><td>日期：追加选中；时间轴：按「框选跨度」对齐；移动 / 缩放时间段：按跨度对齐</td></tr>
+              <tr><td><kbd>Ctrl</kbd>（Mac：<kbd>&#8984;</kbd>）+ 左键拖动</td><td>时间轴：忽略鼠标下的时间段标记，直接压着它框选新的时间段，不会误选中或误移动该标记</td></tr>
+              <tr><td><kbd>右键</kbd></td><td>打开「标记数值」面板（有标记的日期 / 时间段标记）</td></tr>
+              <tr><td><kbd>滚轮</kbd></td><td>在月份胶囊上滚动切换月份；在年份胶囊上滚动调整年份</td></tr>
+            </table>
+            <div class="guide-note">在输入框中打字时，以上快捷键不会触发。</div>
+          </div>
+
+          <div class="guide-sec">
+            <div class="guide-h">九、数据保存</div>
+            <ul class="guide-list">
+              <li>所有日历与标记数据都保存在<b>本浏览器本地</b>（localStorage），不需要联网，也不会自动上传。</li>
+              <li>清除浏览器缓存 / 站点数据会导致数据丢失，重要数据请自行留意备份。</li>
+              <li><b>「设置 → 数据占用」</b>可以查看当前占用大小（按「日历数据 / 导入的图片 / 其他设置」分类），并可一键「清空当前日历的标记」或「清空全部数据」（都会二次确认，不可恢复）。</li>
+              <li>删除标记色、标记或整个日历后，占用会<b>真正变小</b>；占得最多的是用「导入图片」导入的背景图；放进 image 文件夹的图片只记录文件名，几乎不占浏览器空间。</li>
+            </ul>
+          </div>
+
+        </div>
+      </div>
+      <div class="settings-divider"></div>
+      <div class="settings-section">
+        <div class="settings-section-title">声明</div>
+        <ol class="notice-list">
+          <li>本日历项目的全部代码、自制动画、视觉交互效果均为原作者原创。所有动态效果由作者独立开发。（有AI协助）</li>
+          <li>本项目仅用于学习与技术交流，不做任何商业用途。</li>
+          <li>任何人若希望基于本项目进行修改、二次开发、衍生出新作品，最好告知原作者（以任意方式都可以）。</li>
+          <li>衍生作品用于商用性质发布、上线时，需要在项目说明、页面显著位置标明原作者信息与本项目来源，不得抹去原项目标识。</li>
+          <li>未经原作者许可，禁止将本项目及其衍生版本用于商业盈利、公开分发、打包售卖。</li>
+          <li>如违反上述约定，原作者保留追究相关法律责任的权利。</li>
+        </ol>
+      </div>
+      </section>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="settingsClose">关闭</button>
+    </div>
+  </div>
+</div>
+
+<button class="ai-btn" id="aiBtn" type="button" title="AI 助手（功能开发中）"></button>
+
+<div class="modal-overlay" id="aiOverlay">
+  <div class="modal big-modal ai-modal">
+    <div class="settings-head">
+      <h3>AI 助手</h3>
+      <button class="modal-x" id="aiClose" type="button" title="关闭">&#10005;</button>
+    </div>
+    <div class="ai-body">
+      <div class="ai-placeholder">
+        <div class="ai-placeholder-title">功能开发中</div>
+        <div class="ai-placeholder-text">这里将用于放置 AI 相关功能，后续版本再加入。</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="values-panel" id="valuesPanel">
+  <div class="values-panel-head">标记数值</div>
+  <div class="values-targets" id="valuesTargets"></div>
+  <div class="values-list" id="valuesList"></div>
+  <div class="value-type-chooser" id="valueTypeChooser"></div>
+  <div class="values-panel-actions">
+    <button class="btn btn-ghost" id="valuesAdd">+ 添加数值</button>
+    <span style="flex:1"></span>
+    <button class="btn btn-ghost" id="valuesCancel">取消</button>
+    <button class="btn btn-primary" id="valuesSave">保存</button>
+  </div>
+</div>
+
+<script src="calendar.js" defer></script>
+</body>
+</html>
